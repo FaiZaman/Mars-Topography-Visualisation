@@ -14,7 +14,8 @@ def visualise(elevation_path):
 
     # initialise values to read in colour map
     recording = False
-    pixel_height_value = -8 + 1/115
+    pixel_height_change = 1/115
+    pixel_height_value = -8 + pixel_height_change
 
     """
     10 pixels in initial white bar
@@ -22,16 +23,17 @@ def visualise(elevation_path):
     1/115 change per pixel
     """
 
+    x = 0
+
     # loop through the middle row
-    for x in range(0, width):
+    while x < width:
 
         pixel = colour_map_img[middle][x]  # set pixel
-        print(x, pixel)
 
         # check if white
         if pixel[0] == pixel[1] == pixel[2] == 255:
 
-            # once the colourmap has been reached, start recording
+            # once the colourmap has been reached start recording
             recording = True
 
         else:
@@ -39,18 +41,27 @@ def visualise(elevation_path):
             # once recording has started
             if recording:
 
+                # break if we go out of bounds
+                if pixel[0] == pixel[1] == pixel[2] == 0:
+                    break
+
                 # assign the height value for colour of current pixel
                 colour_map_dict[tuple(pixel)] = pixel_height_value
-                pixel_height_value += 1/115
+                print(pixel, pixel_height_value)
+                pixel_height_value += pixel_height_change
 
-                if abs(pixel_height_value - int(pixel_height_value)) < 1/115:
-                    print(int(pixel_height_value))
-                    # set x += 8 somehow
-                
-            
+                if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
+                    x += 7
+
+        x += 1
+
+    return colour_map_dict            
 
 
 
 
 path = 'data/elevationData.tif'
-visualise(path)
+colour_map_dict = visualise(path)
+
+#for key, value in colour_map_dict.items():
+#    print(key, value)
