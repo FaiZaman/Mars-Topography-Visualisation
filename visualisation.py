@@ -1,8 +1,12 @@
+import math
 import cv2
+
 
 def visualise(elevation_path):
 
-    colour_map_dict = {}    # initialise colour map
+    # initialise colour map and height dictionaries
+    colour_map_dict = {}
+    pixel_height_dict = {}
 
     # read in image and narrow down to colour map area
     img = cv2.imread(path, cv2.IMREAD_COLOR)
@@ -47,7 +51,6 @@ def visualise(elevation_path):
 
                 # assign the height value for colour of current pixel
                 colour_map_dict[tuple(pixel)] = pixel_height_value
-                print(pixel, pixel_height_value)
                 pixel_height_value += pixel_height_change
 
                 if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
@@ -55,13 +58,39 @@ def visualise(elevation_path):
 
         x += 1
 
-    return colour_map_dict            
+    colour_map_dict[(255, 255, 255)] = 14   # edge case
+
+    # assign
+    for y in range(0, height):
+        for x in range(0, width):
+
+            # retrieve height for pixel if not black
+            pixel = tuple(colour_map_img[y][x])
+            if not (pixel[0] == pixel[1] == pixel[2] == 0):
+
+                # get closest RGB pixel if not in dict
+                if pixel not in colour_map_dict:
+                    pixel = min(colour_map_dict, key=lambda x: difference(x, pixel))
+
+                # assign height to pixel coordinates
+                height = colour_map_dict[pixel]
+                pixel_height_dict[(y, x)] = height
+
+    return colour_map_dict, pixel_height_dict
 
 
+# calculate difference between two RGB values
+def difference(m, n):
+
+    r1, g1, b1 = m[0], m[1], m[2]
+    r2, g2, b2 = n[0], n[1], n[2]
+    d = math.sqrt((r2-r1)**2+(g2-g1)**2+(b2-b1)**2)
+
+    return d
 
 
 path = 'data/elevationData.tif'
-colour_map_dict = visualise(path)
+colour_map_dict, pixel_height_dict = visualise(path)
 
-#for key, value in colour_map_dict.items():
-#    print(key, value)
+for key, value in pixel_height_dict.items():
+    print(key, value)
