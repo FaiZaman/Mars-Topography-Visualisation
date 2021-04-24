@@ -1,8 +1,8 @@
-import math
 import cv2
+import math
 
 
-def visualise(elevation_path):
+def read_data(elevation_path):
 
     # initialise colour map and height dictionaries
     colour_map_dict = {}
@@ -89,8 +89,7 @@ def difference(m, n):
     return d
 
 
-path = 'data/elevationData.tif'
-colour_map_dict, pixel_height_dict = visualise(path)
+if __name__ == '__main__':
 
-for key, value in pixel_height_dict.items():
-    print(key, value)
+    path = 'data/elevationData.tif'
+    colour_map_dict, pixel_height_dict = read_data(path)
