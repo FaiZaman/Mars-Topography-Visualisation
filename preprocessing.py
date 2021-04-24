@@ -1,7 +1,6 @@
 import cv2
 import math
 
-
 def read_data(elevation_path):
 
     # initialise colour map and height dictionaries
@@ -89,7 +88,36 @@ def difference(m, n):
     return d
 
 
+# converts to lat/lon
+def map_to_sphere(path):
+
+    img = cv2.imread(path, cv2.IMREAD_COLOR)
+    height, width, channels = img.shape
+    radius = 3389.5
+
+    first_img = img[0:height, :2000].copy()
+    second_img = img[0:height, 2000:].copy()
+
+    for y in range(0, height):
+        for x in range(0, 2000):
+
+            first_img_pixel = first_img[y][x]
+            second_img_pixel = second_img[y][x]
+            if (first_img_pixel[0] == first_img_pixel[1] == first_img_pixel[2] == 0) and (second_img_pixel[0] == second_img_pixel[1] == second_img_pixel[2] == 0):
+                continue
+
+            sphere_x = radius * math.cos(x) * math.cos(y)
+            sphere_y = radius * math.sin(x) * math.cos(y)
+            sphere_z = radius * math.sin(y)
+
+            print(sphere_x, sphere_y, sphere_z)
+
+
+
 if __name__ == '__main__':
 
-    path = 'data/elevationData.tif'
-    colour_map_dict, pixel_height_dict = read_data(path)
+    #path = 'data/elevationData.tif'
+    #colour_map_dict, pixel_height_dict = read_data(path)
+
+    cropped_path = 'data/cropped_elevationData.jpg'
+    map_to_sphere(cropped_path)
