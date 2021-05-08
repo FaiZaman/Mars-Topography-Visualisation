@@ -1,19 +1,31 @@
 import cv2
 import math
+import time
+import pickle
 
-def read_data(elevation_path):
+
+# functions to save and load height data
+def save_obj(obj, name):
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(name ):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+
+# read the colour map
+def read_colour_map(image):
 
     # initialise colour map and height dictionaries
     colour_map_dict = {}
-    pixel_height_dict = {}
 
     # read in image and narrow down to colour map area
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-    colour_map_img = img[2200:2550]
+    colour_map_image = image[2200:2550]
 
     # set dimensions and middle value
-    height, width, channels = colour_map_img.shape
-    middle = height // 2
+    _, width, _ = image.shape
+    middle = colour_map_image.shape[0] // 2
 
     # initialise values to read in colour map
     recording = False
@@ -31,7 +43,7 @@ def read_data(elevation_path):
     # loop through the middle row
     while x < width:
 
-        pixel = colour_map_img[middle][x]  # set pixel
+        pixel = colour_map_image[middle][x]  # set pixel
 
         # check if white
         if pixel[0] == pixel[1] == pixel[2] == 255:
@@ -58,24 +70,37 @@ def read_data(elevation_path):
         x += 1
 
     colour_map_dict[(255, 255, 255)] = 14   # edge case
+    return colour_map_dict
 
+
+# assign each pixel a height value based on colourmap
+def assign_heights(image, colour_map_dict):
+
+    # initialise height dictionary and dimensions
+    pixel_height_dict = {}
+    height, width, channels = image.shape
+    print(height, width)
     # assign
     for y in range(0, height):
         for x in range(0, width):
 
+            if y % 10 == 0 and x % 10 == 0:
+                print(y, x)
+
             # retrieve height for pixel if not black
-            pixel = tuple(colour_map_img[y][x])
+            pixel = tuple(image[y][x])
             if not (pixel[0] == pixel[1] == pixel[2] == 0):
 
                 # get closest RGB pixel if not in dict
                 if pixel not in colour_map_dict:
+                    print('not there')
                     pixel = min(colour_map_dict, key=lambda x: difference(x, pixel))
 
                 # assign height to pixel coordinates
                 height = colour_map_dict[pixel]
                 pixel_height_dict[(y, x)] = height
 
-    return colour_map_dict, pixel_height_dict
+    return pixel_height_dict
 
 
 # calculate difference between two RGB values
@@ -88,36 +113,28 @@ def difference(m, n):
     return d
 
 
-# converts to lat/lon
+# converts xyh to xyz for sphere geometry
 def map_to_sphere(path):
 
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
-    height, width, channels = img.shape
-    radius = 3389.5
+    image = cv2.imread(path, cv2.IMREAD_COLOR)
+    height, width, channels = image.shape
+    radius = 3390
 
-    first_img = img[0:height, :2000].copy()
-    second_img = img[0:height, 2000:].copy()
+    west_image = image[0:height, :2000].copy()
+    east_image = image[0:height, 2000:].copy()
 
-    for y in range(0, height):
-        for x in range(0, 2000):
+    start = time.time()
 
-            first_img_pixel = first_img[y][x]
-            second_img_pixel = second_img[y][x]
-            if (first_img_pixel[0] == first_img_pixel[1] == first_img_pixel[2] == 0) and (second_img_pixel[0] == second_img_pixel[1] == second_img_pixel[2] == 0):
-                continue
+    colour_map_dict = read_colour_map(image)
+    #pixel_height_dict_1 = assign_heights(west_image, colour_map_dict)
+    #pixel_height_dict_2 = assign_heights(east_image, colour_map_dict)
+    end = time.time()
+    print("Time taken: ", end - start)
 
-            sphere_x = radius * math.cos(x) * math.cos(y)
-            sphere_y = radius * math.sin(x) * math.cos(y)
-            sphere_z = radius * math.sin(y)
-
-            print(sphere_x, sphere_y, sphere_z)
-
-
+    height_map_west = load_obj('height_map_west')
+    height_map_east = load_obj('height_map_east')
 
 if __name__ == '__main__':
 
-    #path = 'data/elevationData.tif'
-    #colour_map_dict, pixel_height_dict = read_data(path)
-
-    cropped_path = 'data/cropped_elevationData.jpg'
-    map_to_sphere(cropped_path)
+    path = 'data/elevationData.tif'
+    map_to_sphere(path)
