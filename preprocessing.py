@@ -3,6 +3,8 @@ import cv2
 import math
 import time
 import pickle
+import numpy as np
+from scipy.spatial import cKDTree
 
 
 # functions to save and load height data
@@ -77,6 +79,10 @@ def read_colour_map(image):
 # assign each pixel a height value based on colourmap
 def assign_heights(image, centre, colour_map_dict):
 
+    # assign colours in colourmap to image
+    colours = np.array(list(colour_map_dict.keys()))    
+    image = colours[cKDTree(colours).query(image, k=1)[1]]
+
     # initialise height dictionary and dimensions
     pixel_height_dict = {}
     height, width, channels = image.shape
@@ -92,10 +98,6 @@ def assign_heights(image, centre, colour_map_dict):
             pixel = tuple(image[y][x])
             if not (pixel[0] == pixel[1] == pixel[2] == 0):
 
-                # get closest RGB pixel if not in dict
-                if pixel not in colour_map_dict:
-                    pixel = min(colour_map_dict, key=lambda x: difference(x, pixel))
-
                 # set coordinates for sphere
                 x_coordinate = x - x_centre
                 y_coordinate = y - y_centre
@@ -107,23 +109,13 @@ def assign_heights(image, centre, colour_map_dict):
     return pixel_height_dict
 
 
-# calculate difference between two RGB values
-def difference(m, n):
-
-    r1, g1, b1 = m[0], m[1], m[2]
-    r2, g2, b2 = n[0], n[1], n[2]
-    d = math.sqrt((r2-r1)**2+(g2-g1)**2+(b2-b1)**2)
-
-    return d
-
-
 # converts xyh to xyz for sphere geometry
 def map_to_sphere(path):
 
     # read in image and set dimensions
     image = cv2.imread(path, cv2.IMREAD_COLOR)
     height, width, channels = image.shape
-    radius = 3390
+    radius = 490
 
     # separate west and east projections into two images
     west_image = image[151:2111, 13:1975].copy()
@@ -136,10 +128,23 @@ def map_to_sphere(path):
     colour_map_dict = read_colour_map(image)
 
     # read height data and assign
-    pixel_height_dict_1 = assign_heights(west_image, centre, colour_map_dict)
-    pixel_height_dict_2 = assign_heights(east_image, centre, colour_map_dict)
+    #pixel_height_dict_1 = assign_heights(west_image, centre, colour_map_dict)
+    #pixel_height_dict_2 = assign_heights(east_image, centre, colour_map_dict)
     end = time.time()
     print("Time taken: ", end - start)
+
+    height_map_west = load_obj('data/height_map_west')
+    height_map_east = load_obj('data/height_map_east')
+
+    sphere = vtk.vtkSphereSource()
+    sphere.SetCenter(0.0, 0.0, 0.0)
+    sphere.SetRadius(radius)
+    sphere.SetThetaResolution(51)
+    sphere.SetPhiResolution(17)
+    points = sphere.GetOutput().GetPoints()
+    print(points)
+
+    vol = vtk.vtkStructuredPoints()
 
     # projecting data onto sphere
     warp = vtk.vtkWarpScalar()
