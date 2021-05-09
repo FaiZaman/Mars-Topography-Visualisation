@@ -191,8 +191,36 @@ def map_to_sphere(path):
     end = time.time()
     print("Time taken:", end - start)
 
-    # warping the sphere based on height values
+    # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
+    warp.SetInputConnection(sphere.GetOutputPort())
+    warp.SetScaleFactor(2)
+    colors = vtk.vtkNamedColors()
+
+    # initialise a mapper to map sphere data
+    mapper = vtk.vtkPolyDataMapper()
+    mapper.SetInputConnection(warp.GetOutputPort())
+
+    # use actor to set colours
+    actor = vtk.vtkActor()
+    actor.SetMapper(mapper)
+    actor.GetProperty().SetColor(colors.GetColor3d("Cornsilk"))
+
+    # initialise a renderer and set parameters
+    renderer = vtk.vtkRenderer()
+    renderWindow = vtk.vtkRenderWindow()
+    renderWindow.SetWindowName("Sphere")
+    renderWindow.AddRenderer(renderer)
+    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+    renderWindowInteractor.SetRenderWindow(renderWindow)
+
+    # add actor and set background colour
+    renderer.AddActor(actor)
+    renderer.SetBackground(colors.GetColor3d("White"))
+
+    # render the planet
+    renderWindow.Render()
+    renderWindowInteractor.Start()
 
 if __name__ == '__main__':
 
