@@ -112,37 +112,46 @@ def assign_heights(image, centre, colour_map_dict):
 # converts xyh to xyz for sphere geometry
 def map_to_sphere(path):
 
-    # read in image and set dimensions
+    # read in image and separate west and east projections into two images
     image = cv2.imread(path, cv2.IMREAD_COLOR)
-    height, width, channels = image.shape
-    radius = 490
-
-    # separate west and east projections into two images
     west_image = image[151:2111, 13:1975].copy()
     east_image = image[151:2111, 2027:3989].copy()
-    centre = (980, 981)
 
-    start = time.time()
+    # set image dimensions, centre and radius
+    height, width, channels = west_image.shape
+    centre = (980, 981)
+    radius = 980
 
     # read colour map
+    start = time.time()
     colour_map_dict = read_colour_map(image)
 
     # read height data and assign
     #pixel_height_dict_1 = assign_heights(west_image, centre, colour_map_dict)
     #pixel_height_dict_2 = assign_heights(east_image, centre, colour_map_dict)
     end = time.time()
-    print("Time taken: ", end - start)
+    print("Time taken:", end - start)
 
+    # load the height data
     height_map_west = load_obj('data/height_map_west')
     height_map_east = load_obj('data/height_map_east')
 
+    # create sphere and set values
     sphere = vtk.vtkSphereSource()
     sphere.SetCenter(0.0, 0.0, 0.0)
     sphere.SetRadius(radius)
-    sphere.SetThetaResolution(51)
-    sphere.SetPhiResolution(17)
-    points = sphere.GetOutput().GetPoints()
-    print(points)
+    sphere.SetThetaResolution(width)
+    sphere.SetPhiResolution(height)
+    sphere.Update()
+
+    # initalise point data and list of points on sphere
+    point_data = sphere.GetOutput().GetPoints()
+    point_list = []
+
+    # get list of points in sphere currently
+    for i in range(0, 1046530):
+        point = point_data.GetPoint(i)
+        point_list.append(point)
 
     vol = vtk.vtkStructuredPoints()
 
