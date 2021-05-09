@@ -172,17 +172,27 @@ def map_to_sphere(path):
     sphere.Update()
 
     # initalise point data and list of points on sphere and retrieve list corresponding heights
-    point_data = sphere.GetOutput().GetPoints()
     #height_list = get_scalar_heights(point_data, height_map_west)
     height_list = load_obj('data/heights')
+
+    # create data structure for heights to set scalars
+    height_scalars = vtk.vtkDoubleArray()
+    height_scalars.SetNumberOfTuples(1046530)
+
+    # set the height values in the data structure
+    for index in range(0, len(height_list)):
+
+        height = height_list[index]
+        height_scalars.SetTuple1(index, height)
+
+    # assign to sphere
+    sphere.GetOutput().GetPointData().SetScalars(height_scalars)
 
     end = time.time()
     print("Time taken:", end - start)
 
     # warping the sphere based on height values
     warp = vtk.vtkWarpScalar()
-    warp.SetInputConnection(height_list)
-    warp.SetScaleFactor(-0.1)
 
 if __name__ == '__main__':
 
