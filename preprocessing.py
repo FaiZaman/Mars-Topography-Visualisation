@@ -4,6 +4,7 @@ import math
 import time
 import pickle
 import numpy as np
+from scipy.spatial import KDTree
 from scipy.spatial import cKDTree
 
 
@@ -109,6 +110,34 @@ def assign_heights(image, centre, colour_map_dict):
     return pixel_height_dict
 
 
+# match closest image coordinate to sphere xy coordinate and fetch its height
+def get_scalar_heights(point_data, height_map_west):
+
+    height_list = []
+
+    # get list of image coordinates and initialise tree
+    image_coordinates = list(height_map_west.keys())
+    tree = KDTree(image_coordinates)
+
+    # get list of points in sphere currently
+    for i in range(0, 1046530):
+
+        if i % 50000 == 0:
+            print(i)
+        point = point_data.GetPoint(i)
+
+        # get xy coordinates of sphere point and fetch closest point in image coordinates
+        sphere_point_xy = (point[0], point[1])
+        _, index = tree.query(sphere_point_xy, k=1)
+
+        # fetch height and add to list
+        coordinate = image_coordinates[index]
+        height = height_map_west[coordinate]
+        height_list.append(height)
+
+    return height_list
+
+
 # converts xyh to xyz for sphere geometry
 def map_to_sphere(path):
 
@@ -129,8 +158,6 @@ def map_to_sphere(path):
     # read height data and assign
     #pixel_height_dict_1 = assign_heights(west_image, centre, colour_map_dict)
     #pixel_height_dict_2 = assign_heights(east_image, centre, colour_map_dict)
-    end = time.time()
-    print("Time taken:", end - start)
 
     # load the height data
     height_map_west = load_obj('data/height_map_west')
@@ -144,20 +171,17 @@ def map_to_sphere(path):
     sphere.SetPhiResolution(height)
     sphere.Update()
 
-    # initalise point data and list of points on sphere
+    # initalise point data and list of points on sphere and retrieve list corresponding heights
     point_data = sphere.GetOutput().GetPoints()
-    point_list = []
+    #height_list = get_scalar_heights(point_data, height_map_west)
+    height_list = load_obj('data/heights')
 
-    # get list of points in sphere currently
-    for i in range(0, 1046530):
-        point = point_data.GetPoint(i)
-        point_list.append(point)
+    end = time.time()
+    print("Time taken:", end - start)
 
-    vol = vtk.vtkStructuredPoints()
-
-    # projecting data onto sphere
+    # warping the sphere based on height values
     warp = vtk.vtkWarpScalar()
-    warp.SetInputConnection(height_map_west)
+    warp.SetInputConnection(height_list)
     warp.SetScaleFactor(-0.1)
 
 if __name__ == '__main__':
