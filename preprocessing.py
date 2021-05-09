@@ -1,6 +1,5 @@
 import vtk
 import cv2
-import math
 import time
 import pickle
 import numpy as np
@@ -111,28 +110,45 @@ def assign_heights(image, centre, colour_map_dict):
 
 
 # match closest image coordinate to sphere xy coordinate and fetch its height
-def get_scalar_heights(point_data, height_map_west):
+def get_scalar_heights(point_data, num_points, height_map_west, height_map_east):
 
+    # initialise height list
     height_list = []
 
-    # get list of image coordinates and initialise tree
-    image_coordinates = list(height_map_west.keys())
-    tree = KDTree(image_coordinates)
+    # get list of image coordinates
+    west_image_coordinates = list(height_map_west.keys())
+    east_image_coordinates = list(height_map_east.keys())
+
+    # initialise trees for west and east images
+    west_tree = KDTree(west_image_coordinates)
+    east_tree = KDTree(east_image_coordinates)
 
     # get list of points in sphere currently
-    for i in range(0, 1046530):
+    for i in range(0, num_points):
 
-        if i % 50000 == 0:
-            print(i)
-        point = point_data.GetPoint(i)
+        point = point_data.GetPoint(i)  # initialise point
 
         # get xy coordinates of sphere point and fetch closest point in image coordinates
         sphere_point_xy = (point[0], point[1])
-        _, index = tree.query(sphere_point_xy, k=1)
+        z_coordinate = point[2]
 
-        # fetch height and add to list
-        coordinate = image_coordinates[index]
-        height = height_map_west[coordinate]
+        # assign height from west image
+        if z_coordinate >= 0:
+
+            # query tree for closest image and fetch height
+            _, index = west_tree.query(sphere_point_xy, k=1)
+            coordinate = west_image_coordinates[index]
+            height = height_map_west[coordinate]
+
+        # assign height from east image
+        else:
+
+            # query tree for closest image and fetch height
+            _, index = east_tree.query(sphere_point_xy, k=1)
+            coordinate = east_image_coordinates[index]
+            height = height_map_east[coordinate]
+
+        # add to list
         height_list.append(height)
 
     return height_list
@@ -171,9 +187,13 @@ def map_to_sphere(path):
     sphere.SetPhiResolution(height)
     sphere.Update()
 
-    # initalise point data and list of points on sphere and retrieve list corresponding heights
-    #height_list = get_scalar_heights(point_data, height_map_west)
-    height_list = load_obj('data/heights')
+    # initalise point data and their size
+    point_data = sphere.GetOutput().GetPoints()
+    num_points = point_data.GetNumberOfPoints()
+
+    # retrieve list of corresponding heights
+    #height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
+    height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
