@@ -203,18 +203,41 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
 
 
 # converts xyh to xyz for sphere geometry
-def map_to_sphere(elevation_data_path, texture_data_path):
+def compute_height_map(elevation_data_path, texture_data_path):
 
     # create sphere and set values
-    sphere = vtk.vtkSphereSource()
-    sphere.SetCenter(0.0, 0.0, 0.0)
-    sphere.SetRadius(980)
-    sphere.SetThetaResolution(1962)
-    sphere.SetPhiResolution(1959)
-    sphere.Update()
+    mars = vtk.vtkSphereSource()
+    mars.SetCenter(0.0, 0.0, 0.0)
+    mars.SetRadius(980)
+    mars.SetThetaResolution(1962)
+    mars.SetPhiResolution(1959)
+    mars.Update()
+
+    # Read the image data from a file
+    reader = vtk.vtkJPEGReader()
+    reader.SetFileName(texture_data_path)
+
+    # Create texture object
+    texture = vtk.vtkTexture()
+    texture.SetInputConnection(reader.GetOutputPort())
+
+    # Map texture coordinates
+    map_to_sphere = vtk.vtkTextureMapToSphere()
+    map_to_sphere.SetInputConnection(mars.GetOutputPort())
+    map_to_sphere.PreventSeamOn()
+
+    # Create mapper and set the mapped texture as input
+    texture_mapper = vtk.vtkPolyDataMapper()
+    texture_mapper.SetInputConnection(map_to_sphere.GetOutputPort())
+    texture_mapper.ScalarVisibilityOff()
+
+    # Create actor and set the mapper and the texture
+    texture_actor = vtk.vtkActor()
+    texture_actor.SetMapper(texture_mapper)
+    texture_actor.SetTexture(texture)
 
     # initalise point data and their size
-    point_data = sphere.GetOutput().GetPoints()
+    point_data = mars.GetOutput().GetPoints()
     num_points = point_data.GetNumberOfPoints()
 
     #height_list = preprocess(elevation_data_path, point_data, num_points)
@@ -231,22 +254,22 @@ def map_to_sphere(elevation_data_path, texture_data_path):
         height_scalars.SetTuple1(index, height)
 
     # assign to sphere
-    sphere.GetOutput().GetPointData().SetScalars(height_scalars)
+    mars.GetOutput().GetPointData().SetScalars(height_scalars)
 
     # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
-    warp.SetInputConnection(sphere.GetOutputPort())
+    warp.SetInputConnection(mars.GetOutputPort())
     warp.SetScaleFactor(2.5)
     colors = vtk.vtkNamedColors()
 
     # initialise a mapper to map sphere data
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputConnection(warp.GetOutputPort())
+    height_mapper = vtk.vtkPolyDataMapper()
+    height_mapper.SetInputConnection(warp.GetOutputPort())
+    height_mapper.ScalarVisibilityOff()
 
     # use actor to set colours
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(colors.GetColor3d("Cornsilk"))
+    height_actor = vtk.vtkActor()
+    height_actor.SetMapper(height_mapper)
 
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
@@ -257,9 +280,10 @@ def map_to_sphere(elevation_data_path, texture_data_path):
     renderWindowInteractor.SetRenderWindow(renderWindow)
 
     # add actor and set background colour
-    renderer.AddActor(actor)
+    renderer.AddActor(height_actor)
+    renderer.AddActor(texture_actor)
     renderer.SetBackground(colors.GetColor3d("Black"))
-
+    
     # changes scale factor based on slider
     def update_scale_factor(obj, event):
 
@@ -294,8 +318,9 @@ def map_to_sphere(elevation_data_path, texture_data_path):
     renderWindow.Render()
     renderWindowInteractor.Start()
 
+
 if __name__ == '__main__':
 
     elevation_data_path = 'data/elevationData.tif'
     texture_data_path = 'data/marsTexture.jpg'
-    map_to_sphere(elevation_data_path, texture_data_path)
+    compute_height_map(elevation_data_path, texture_data_path)
