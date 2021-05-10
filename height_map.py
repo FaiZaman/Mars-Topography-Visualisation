@@ -213,29 +213,6 @@ def compute_height_map(elevation_data_path, texture_data_path):
     mars.SetPhiResolution(1959)
     mars.Update()
 
-    # Read the image data from a file
-    reader = vtk.vtkJPEGReader()
-    reader.SetFileName(texture_data_path)
-
-    # Create texture object
-    texture = vtk.vtkTexture()
-    texture.SetInputConnection(reader.GetOutputPort())
-
-    # Map texture coordinates
-    map_to_sphere = vtk.vtkTextureMapToSphere()
-    map_to_sphere.SetInputConnection(mars.GetOutputPort())
-    map_to_sphere.PreventSeamOn()
-
-    # Create mapper and set the mapped texture as input
-    texture_mapper = vtk.vtkPolyDataMapper()
-    texture_mapper.SetInputConnection(map_to_sphere.GetOutputPort())
-    texture_mapper.ScalarVisibilityOff()
-
-    # Create actor and set the mapper and the texture
-    texture_actor = vtk.vtkActor()
-    texture_actor.SetMapper(texture_mapper)
-    texture_actor.SetTexture(texture)
-
     # initalise point data and their size
     point_data = mars.GetOutput().GetPoints()
     num_points = point_data.GetNumberOfPoints()
@@ -253,14 +230,14 @@ def compute_height_map(elevation_data_path, texture_data_path):
         height = height_list[index]
         height_scalars.SetTuple1(index, height)
 
-    # assign to sphere
+    # assign to sphere and initialise colours
     mars.GetOutput().GetPointData().SetScalars(height_scalars)
+    colors = vtk.vtkNamedColors()
 
     # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
     warp.SetInputConnection(mars.GetOutputPort())
     warp.SetScaleFactor(2.5)
-    colors = vtk.vtkNamedColors()
 
     # initialise a mapper to map sphere data
     height_mapper = vtk.vtkPolyDataMapper()
@@ -270,6 +247,29 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # use actor to set colours
     height_actor = vtk.vtkActor()
     height_actor.SetMapper(height_mapper)
+
+    # read the image data from a file
+    reader = vtk.vtkJPEGReader()
+    reader.SetFileName(texture_data_path)
+
+    # create texture object
+    texture = vtk.vtkTexture()
+    texture.SetInputConnection(reader.GetOutputPort())
+
+    # map texture coordinates onto warped geometry
+    map_to_sphere = vtk.vtkTextureMapToSphere()
+    map_to_sphere.SetInputConnection(warp.GetOutputPort())
+    map_to_sphere.PreventSeamOn()
+
+    # create mapper and set the mapped texture as input
+    texture_mapper = vtk.vtkPolyDataMapper()
+    texture_mapper.SetInputConnection(map_to_sphere.GetOutputPort())
+    texture_mapper.ScalarVisibilityOff()
+
+    # create actor and set the mapper and the texture
+    texture_actor = vtk.vtkActor()
+    texture_actor.SetMapper(texture_mapper)
+    texture_actor.SetTexture(texture)
 
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
