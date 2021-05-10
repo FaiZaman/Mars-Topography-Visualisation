@@ -1,3 +1,4 @@
+import cv2
 import vtk
 import cv2
 import time
@@ -47,9 +48,10 @@ def read_colour_map(image):
     while x < width:
 
         pixel = colour_map_image[middle][x]  # set pixel
+        r, g, b = pixel[0], pixel[1], pixel[2]
 
         # check if white
-        if pixel[0] == pixel[1] == pixel[2] == 255:
+        if r == g == b == 255:
 
             # once the colourmap has been reached start recording
             recording = True
@@ -60,11 +62,11 @@ def read_colour_map(image):
             if recording:
 
                 # break if we go out of bounds
-                if pixel[0] == pixel[1] == pixel[2] == 0:
+                if r == g == b == 0:
                     break
 
                 # assign the height value for colour of current pixel
-                colour_map_dict[tuple(pixel)] = pixel_height_value
+                colour_map_dict[(r, g, b)] = pixel_height_value
                 pixel_height_value += pixel_height_change
 
                 if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
@@ -159,6 +161,8 @@ def map_to_sphere(path):
 
     # read in image and separate west and east projections into two images
     image = cv2.imread(path, cv2.IMREAD_COLOR)
+    image = cv2.GaussianBlur(image, (5, 5), 0)
+
     west_image = image[151:2111, 13:1975].copy()
     east_image = image[151:2111, 2027:3989].copy()
 
@@ -169,11 +173,15 @@ def map_to_sphere(path):
 
     # read colour map
     start = time.time()
+    print("Reading colour map")
     colour_map_dict = read_colour_map(image)
 
-    # read height data and assign
-    #pixel_height_dict_1 = assign_heights(west_image, centre, colour_map_dict)
-    #pixel_height_dict_2 = assign_heights(east_image, centre, colour_map_dict)
+    # read height data and save
+    print("Reading height data")
+    #height_map_west = assign_heights(west_image, centre, colour_map_dict)
+    #height_map_east = assign_heights(east_image, centre, colour_map_dict)
+    #save_obj(height_map_west, 'data/height_map_west')
+    #save_obj(height_map_east, 'data/height_map_east')
 
     # load the height data
     height_map_west = load_obj('data/height_map_west')
@@ -191,8 +199,12 @@ def map_to_sphere(path):
     point_data = sphere.GetOutput().GetPoints()
     num_points = point_data.GetNumberOfPoints()
 
-    # retrieve list of corresponding heights
+    # retrieve list of corresponding heights and save
+    print("Assigning scalar heights")
     #height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
+    #save_obj(height_list, 'data/elevation_map')
+
+    # load height data
     height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
@@ -237,6 +249,25 @@ def map_to_sphere(path):
     # add actor and set background colour
     renderer.AddActor(actor)
     renderer.SetBackground(colors.GetColor3d("White"))
+
+    # custom lookup table for mapper and scalar bar
+    lut = vtk.vtkLookupTable()
+    lut.Build()
+
+    # set lookup table to mapper
+    mapper.SetScalarRange(-8, 14)
+    mapper.SetLookupTable(lut)
+
+    # create the scalar_bar
+    scalar_bar = vtk.vtkScalarBarActor()
+    scalar_bar.SetOrientationToHorizontal()
+    scalar_bar.SetLookupTable(lut)
+
+    # create scalar bar widget
+    scalar_bar_widget = vtk.vtkScalarBarWidget()
+    scalar_bar_widget.SetInteractor(renderWindowInteractor)
+    scalar_bar_widget.SetScalarBarActor(scalar_bar)
+    scalar_bar_widget.On()  
 
     # render the planet
     renderWindow.Render()
