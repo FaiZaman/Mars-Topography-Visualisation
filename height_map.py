@@ -250,24 +250,22 @@ def map_to_sphere(path):
     renderer.AddActor(actor)
     renderer.SetBackground(colors.GetColor3d("White"))
 
-    # custom lookup table for mapper and scalar bar
-    lut = vtk.vtkLookupTable()
-    lut.Build()
+    # parameters for scale factor slider
+    SliderRepresentation = vtk.vtkSliderRepresentation2D()
+    SliderRepresentation.SetMinimumValue(0)
+    SliderRepresentation.SetMaximumValue(5)
+    SliderRepresentation.SetValue(2.5)
 
-    # set lookup table to mapper
-    mapper.SetScalarRange(-8, 14)
-    mapper.SetLookupTable(lut)
+    # more slider parameters
+    SliderRepresentation.SetTitleText('Scale Factor')
+    SliderRepresentation.SetSliderLength(0.02)
+    SliderRepresentation.SetSliderWidth(0.03)
 
-    # create the scalar_bar
-    scalar_bar = vtk.vtkScalarBarActor()
-    scalar_bar.SetOrientationToHorizontal()
-    scalar_bar.SetLookupTable(lut)
-
-    # create scalar bar widget
-    scalar_bar_widget = vtk.vtkScalarBarWidget()
-    scalar_bar_widget.SetInteractor(renderWindowInteractor)
-    scalar_bar_widget.SetScalarBarActor(scalar_bar)
-    scalar_bar_widget.On()  
+    # creating slider widget and assigning parameters
+    SliderWidget = vtk.vtkSliderWidget()
+    SliderWidget.SetInteractor(renderWindowInteractor)
+    SliderWidget.SetRepresentation(SliderRepresentation)
+    SliderWidget.SetEnabled(True)
 
     # render the planet
     renderWindow.Render()
