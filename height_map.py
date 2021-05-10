@@ -226,7 +226,7 @@ def map_to_sphere(path):
     # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
     warp.SetInputConnection(sphere.GetOutputPort())
-    warp.SetScaleFactor(2)
+    warp.SetScaleFactor(2.5)
     colors = vtk.vtkNamedColors()
 
     # initialise a mapper to map sphere data
@@ -248,7 +248,13 @@ def map_to_sphere(path):
 
     # add actor and set background colour
     renderer.AddActor(actor)
-    renderer.SetBackground(colors.GetColor3d("White"))
+    renderer.SetBackground(colors.GetColor3d("Black"))
+
+    # changes scale factor based on slider
+    def update_scale_factor(obj, event):
+
+        scale_factor = obj.GetRepresentation().GetValue()
+        warp.SetScaleFactor(scale_factor)
 
     # parameters for scale factor slider
     SliderRepresentation = vtk.vtkSliderRepresentation2D()
@@ -256,16 +262,23 @@ def map_to_sphere(path):
     SliderRepresentation.SetMaximumValue(5)
     SliderRepresentation.SetValue(2.5)
 
+    # set coordinates of slider
+    SliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
+    SliderRepresentation.GetPoint1Coordinate().SetValue(0.25, 0.1)
+    SliderRepresentation.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay()
+    SliderRepresentation.GetPoint2Coordinate().SetValue(0.75, 0.1)
+
     # more slider parameters
     SliderRepresentation.SetTitleText('Scale Factor')
     SliderRepresentation.SetSliderLength(0.02)
     SliderRepresentation.SetSliderWidth(0.03)
 
-    # creating slider widget and assigning parameters
+    # create slider widget, assign parameters, and update scale factor based on slider changes
     SliderWidget = vtk.vtkSliderWidget()
     SliderWidget.SetInteractor(renderWindowInteractor)
     SliderWidget.SetRepresentation(SliderRepresentation)
     SliderWidget.SetEnabled(True)
+    SliderWidget.AddObserver("InteractionEvent", update_scale_factor)
 
     # render the planet
     renderWindow.Render()
