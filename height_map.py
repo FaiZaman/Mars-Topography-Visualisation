@@ -78,6 +78,52 @@ def read_colour_map(image):
     return colour_map_dict
 
 
+# preprocess by computing colourmap, heights, and their scalars
+def preprocess(elevation_data_path, point_data, num_points):
+
+    # read in image and separate west and east projections into two images
+    elevation_image = cv2.imread(elevation_data_path, cv2.IMREAD_COLOR)
+    elevation_image = cv2.GaussianBlur(elevation_image, (5, 5), 0)
+
+    west_image = elevation_image[151:2111, 13:1975].copy()
+    east_image = elevation_image[151:2111, 2027:3989].copy()
+
+    # set image dimensions, centre and radius
+    height, width, channels = west_image.shape
+    centre = (980, 981)
+    radius = 980
+
+    # read colour map
+    print("Reading colour map")
+    colour_map_dict = read_colour_map(elevation_image)
+
+    # read height data and save
+    print("Reading height data")
+    height_map_west = assign_heights(west_image, centre, colour_map_dict)
+    height_map_east = assign_heights(east_image, centre, colour_map_dict)
+    #save_obj(height_map_west, 'data/height_map_west')
+    #save_obj(height_map_east, 'data/height_map_east')
+
+    # retrieve list of corresponding heights and save
+    print("Assigning scalar heights")
+    height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
+    #save_obj(height_list, 'data/elevation_map')
+
+    return height_list
+
+
+def load_data():
+
+    # load the height data
+    height_map_west = load_obj('data/height_map_west')
+    height_map_east = load_obj('data/height_map_east')
+
+    # load height scalars
+    height_list = load_obj('data/elevation_map')
+
+    return height_map_west, height_map_east, height_list
+
+
 # assign each pixel a height value based on colourmap
 def assign_heights(image, centre, colour_map_dict):
 
@@ -157,59 +203,26 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
 
 
 # converts xyh to xyz for sphere geometry
-def map_to_sphere(path):
-
-    # read in image and separate west and east projections into two images
-    image = cv2.imread(path, cv2.IMREAD_COLOR)
-    image = cv2.GaussianBlur(image, (5, 5), 0)
-
-    west_image = image[151:2111, 13:1975].copy()
-    east_image = image[151:2111, 2027:3989].copy()
-
-    # set image dimensions, centre and radius
-    height, width, channels = west_image.shape
-    centre = (980, 981)
-    radius = 980
-
-    # read colour map
-    start = time.time()
-    print("Reading colour map")
-    colour_map_dict = read_colour_map(image)
-
-    # read height data and save
-    print("Reading height data")
-    #height_map_west = assign_heights(west_image, centre, colour_map_dict)
-    #height_map_east = assign_heights(east_image, centre, colour_map_dict)
-    #save_obj(height_map_west, 'data/height_map_west')
-    #save_obj(height_map_east, 'data/height_map_east')
-
-    # load the height data
-    height_map_west = load_obj('data/height_map_west')
-    height_map_east = load_obj('data/height_map_east')
+def map_to_sphere(elevation_data_path, texture_data_path):
 
     # create sphere and set values
     sphere = vtk.vtkSphereSource()
     sphere.SetCenter(0.0, 0.0, 0.0)
-    sphere.SetRadius(radius)
-    sphere.SetThetaResolution(width)
-    sphere.SetPhiResolution(height)
+    sphere.SetRadius(980)
+    sphere.SetThetaResolution(1962)
+    sphere.SetPhiResolution(1959)
     sphere.Update()
 
     # initalise point data and their size
     point_data = sphere.GetOutput().GetPoints()
     num_points = point_data.GetNumberOfPoints()
 
-    # retrieve list of corresponding heights and save
-    print("Assigning scalar heights")
-    #height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
-    #save_obj(height_list, 'data/elevation_map')
-
-    # load height data
-    height_list = load_obj('data/elevation_map')
+    #height_list = preprocess(elevation_data_path, point_data, num_points)
+    height_map_west, height_map_east, height_list = load_data()
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
-    height_scalars.SetNumberOfTuples(1046530)
+    height_scalars.SetNumberOfTuples(num_points)
 
     # set the height values in the data structure
     for index in range(0, len(height_list)):
@@ -219,9 +232,6 @@ def map_to_sphere(path):
 
     # assign to sphere
     sphere.GetOutput().GetPointData().SetScalars(height_scalars)
-
-    end = time.time()
-    print("Time taken:", end - start)
 
     # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
@@ -241,7 +251,7 @@ def map_to_sphere(path):
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
     renderWindow = vtk.vtkRenderWindow()
-    renderWindow.SetWindowName("Sphere")
+    renderWindow.SetWindowName("Mars Elevation Map")
     renderWindow.AddRenderer(renderer)
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
@@ -286,5 +296,6 @@ def map_to_sphere(path):
 
 if __name__ == '__main__':
 
-    path = 'data/elevationData.tif'
-    map_to_sphere(path)
+    elevation_data_path = 'data/elevationData.tif'
+    texture_data_path = 'data/marsTexture.jpg'
+    map_to_sphere(elevation_data_path, texture_data_path)
