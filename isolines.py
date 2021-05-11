@@ -30,7 +30,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     mars.SetPhiResolution(1959)
     mars.Update()
 
-    colors = vtk.vtkNamedColors()
+    colours = vtk.vtkNamedColors()  # initalise colours
 
     # read the image data from a file
     reader = vtk.vtkJPEGReader()
@@ -55,6 +55,42 @@ def compute_isolines(elevation_data_path, texture_data_path):
     texture_actor.SetMapper(texture_mapper)
     texture_actor.SetTexture(texture)
 
+    # initalise point data and their size
+    point_data = mars.GetOutput().GetPoints()
+    num_points = point_data.GetNumberOfPoints()
+
+    # preprocess or load data
+    #height_list = preprocess(elevation_data_path, point_data, num_points)
+    height_map_west, height_map_east, height_list = load_data()
+
+    # create data structure for heights to set scalars
+    height_scalars = vtk.vtkDoubleArray()
+    height_scalars.SetNumberOfTuples(num_points)
+
+    # set the height values in the data structure
+    for index in range(0, len(height_list)):
+
+        height = height_list[index]
+        height_scalars.SetTuple1(index, height)
+
+    # assign to sphere and initialise scalar range of heights
+    mars.GetOutput().GetPointData().SetScalars(height_scalars)
+    scalarRange = [-8, 14]
+
+    # create contour filter and generate values of 1km increments for isolines
+    ContourFilter = vtk.vtkContourFilter()
+    ContourFilter.SetInputConnection(mars.GetOutputPort())
+    ContourFilter.GenerateValues(23, scalarRange)
+
+    # create isoline mapper, set the contour filter as input, and set scalar range
+    isoline_mapper = vtk.vtkPolyDataMapper()
+    isoline_mapper.SetInputConnection(ContourFilter.GetOutputPort())
+    isoline_mapper.SetScalarRange(scalarRange)
+
+    # create isoline actor and set contour filter mapper
+    isoline_actor = vtk.vtkActor()
+    isoline_actor.SetMapper(isoline_mapper)
+
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
     renderWindow = vtk.vtkRenderWindow()
@@ -65,7 +101,8 @@ def compute_isolines(elevation_data_path, texture_data_path):
 
     # add actor and set background colour
     renderer.AddActor(texture_actor)
-    renderer.SetBackground(colors.GetColor3d("Black"))
+    renderer.AddActor(isoline_actor)
+    renderer.SetBackground(colours.GetColor3d("Black"))
 
     # render the planet
     renderWindow.Render()

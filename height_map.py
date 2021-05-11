@@ -221,10 +221,13 @@ def compute_height_map(elevation_data_path, texture_data_path):
     mars.SetPhiResolution(1959)
     mars.Update()
 
+    colours = vtk.vtkNamedColors()  # initalise colours
+
     # initalise point data and their size
     point_data = mars.GetOutput().GetPoints()
     num_points = point_data.GetNumberOfPoints()
 
+    # preprocess or load data
     #height_list = preprocess(elevation_data_path, point_data, num_points)
     height_map_west, height_map_east, height_list = load_data()
 
@@ -238,9 +241,8 @@ def compute_height_map(elevation_data_path, texture_data_path):
         height = height_list[index]
         height_scalars.SetTuple1(index, height)
 
-    # assign to sphere and initialise colours
+    # assign to sphere
     mars.GetOutput().GetPointData().SetScalars(height_scalars)
-    colors = vtk.vtkNamedColors()
 
     # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
@@ -294,12 +296,13 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # create water actor and set to blue
     water_actor = vtk.vtkActor()
     water_actor.SetMapper(water_mapper)
-    water_actor.GetProperty().SetColor(colors.GetColor3d("DeepSkyBlue"))
+    water_actor.GetProperty().SetColor(colours.GetColor3d("DeepSkyBlue"))
 
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.SetWindowName("Mars Elevation Map")
+    renderWindow.SetSize(1900, 1000)
     renderWindow.AddRenderer(renderer)
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
@@ -308,7 +311,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     renderer.AddActor(height_actor)
     renderer.AddActor(texture_actor)
     renderer.AddActor(water_actor)
-    renderer.SetBackground(colors.GetColor3d("Black"))
+    renderer.SetBackground(colours.GetColor3d("Black"))
 
     # changes scale factor based on slider
     def update_scale_factor(obj, event):
