@@ -67,7 +67,8 @@ def read_colour_map(image):
                     break
 
                 # assign the height value for colour of current pixel
-                colour_map_dict[(r, g, b)] = pixel_height_value
+                # add 8 so -8 becomes base of sphere
+                colour_map_dict[(r, g, b)] = pixel_height_value + 8
                 pixel_height_value += pixel_height_change
 
                 if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
@@ -84,7 +85,6 @@ def preprocess(elevation_data_path, point_data, num_points):
 
     # read in image and separate west and east projections into two images
     elevation_image = cv2.imread(elevation_data_path, cv2.IMREAD_COLOR)
-    elevation_image = cv2.GaussianBlur(elevation_image, (5, 5), 0)
 
     # split west and east hemisphere images and set centre
     west_image = elevation_image[151:2111, 13:1975].copy()
@@ -99,8 +99,6 @@ def preprocess(elevation_data_path, point_data, num_points):
     print("Reading height data")
     height_map_west = assign_heights(west_image, centre, colour_map_dict)
     height_map_east = assign_heights(east_image, centre, colour_map_dict)
-    save_obj(height_map_west, 'data/height_map_west')
-    save_obj(height_map_east, 'data/height_map_east')
 
     # retrieve list of corresponding heights and save
     print("Assigning scalar heights")
@@ -108,18 +106,6 @@ def preprocess(elevation_data_path, point_data, num_points):
     save_obj(height_list, 'data/elevation_map')
 
     return height_list
-
-
-def load_data():
-
-    # load the height data
-    height_map_west = load_obj('data/height_map_west')
-    height_map_east = load_obj('data/height_map_east')
-
-    # load height scalars
-    height_list = load_obj('data/elevation_map')
-
-    return height_map_west, height_map_east, height_list
 
 
 # assign each pixel a height value based on colourmap
@@ -212,13 +198,14 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
 def compute_height_map(elevation_data_path, texture_data_path):
 
     start = time.time()
+    sphere_height, sphere_width = 1959, 1962
 
     # create sphere and set values
     mars = vtk.vtkSphereSource()
     mars.SetCenter(0.0, 0.0, 0.0)
     mars.SetRadius(978)
-    mars.SetThetaResolution(1962)
-    mars.SetPhiResolution(1959)
+    mars.SetThetaResolution(sphere_width)
+    mars.SetPhiResolution(sphere_height)
     mars.Update()
 
     colours = vtk.vtkNamedColors()  # initalise colours
@@ -229,7 +216,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
 
     # preprocess or load data
     #height_list = preprocess(elevation_data_path, point_data, num_points)
-    height_map_west, height_map_east, height_list = load_data()
+    height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
@@ -285,8 +272,8 @@ def compute_height_map(elevation_data_path, texture_data_path):
     water = vtk.vtkSphereSource()
     water.SetCenter(0.0, 0.0, 0.0)
     water.SetRadius(978)
-    water.SetThetaResolution(1962)
-    water.SetPhiResolution(1959)
+    water.SetThetaResolution(sphere_width)
+    water.SetPhiResolution(sphere_height)
     water.Update()
 
     # set water mapper
@@ -310,7 +297,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # add actor and set background colour
     renderer.AddActor(height_actor)
     renderer.AddActor(texture_actor)
-    renderer.AddActor(water_actor)
+    #renderer.AddActor(water_actor)
     renderer.SetBackground(colours.GetColor3d("Black"))
 
     # changes scale factor based on slider
