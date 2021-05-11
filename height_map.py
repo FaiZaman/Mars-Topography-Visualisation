@@ -208,7 +208,7 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
     return height_list
 
 
-# converts xyh to xyz for sphere geometry
+# texture and render height map of Mars using elevation data
 def compute_height_map(elevation_data_path, texture_data_path):
 
     start = time.time()
@@ -350,6 +350,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
 
 if __name__ == '__main__':
 
+    # passing paths to functions
     elevation_data_path = 'data/elevationData.tif'
     texture_data_path = 'data/marsTexture.jpg'
     compute_height_map(elevation_data_path, texture_data_path)
