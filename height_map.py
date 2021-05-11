@@ -99,13 +99,13 @@ def preprocess(elevation_data_path, point_data, num_points):
     print("Reading height data")
     height_map_west = assign_heights(west_image, centre, colour_map_dict)
     height_map_east = assign_heights(east_image, centre, colour_map_dict)
-    #save_obj(height_map_west, 'data/height_map_west')
-    #save_obj(height_map_east, 'data/height_map_east')
+    save_obj(height_map_west, 'data/height_map_west')
+    save_obj(height_map_east, 'data/height_map_east')
 
     # retrieve list of corresponding heights and save
     print("Assigning scalar heights")
     height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
-    #save_obj(height_list, 'data/elevation_map')
+    save_obj(height_list, 'data/elevation_map')
 
     return height_list
 
@@ -155,6 +155,24 @@ def assign_heights(image, centre, colour_map_dict):
     return pixel_height_dict
 
 
+# get height for current pixel by calculating median of heights of neighbouring pixels for smoother sphere
+def calculate_height(sphere_point_xy, tree, coordinates, height_map):
+
+    # query tree for 500 closest image coordinates and initialise neighbour pixel heights
+    _, index = tree.query(sphere_point_xy, k=500, workers=-1)
+    neighbour_heights = []
+
+    # retrieve heights for neighbouring pixels and add to list
+    for neighbour_index in index:
+        coordinate = coordinates[neighbour_index]
+        neighbour_height = height_map[coordinate]
+        neighbour_heights.append(neighbour_height)
+
+    # take height as median of neighbour pixels
+    height = np.median(neighbour_heights)
+    return height
+
+
 # match closest image coordinate to sphere xy coordinate and fetch its height
 def get_scalar_heights(point_data, num_points, height_map_west, height_map_east):
 
@@ -178,21 +196,11 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
         sphere_point_xy = (point[0], point[1])
         z_coordinate = point[2]
 
-        # assign height from west image
+        # fetch height for the current pixel
         if z_coordinate >= 0:
-
-            # query tree for closest image and fetch height
-            _, index = west_tree.query(sphere_point_xy, k=1, workers=-1)
-            coordinate = west_image_coordinates[index]
-            height = height_map_west[coordinate]
-
-        # assign height from east image
+            height = calculate_height(sphere_point_xy, west_tree, west_image_coordinates, height_map_west)
         else:
-
-            # query tree for closest image and fetch height
-            _, index = east_tree.query(sphere_point_xy, k=1, workers=-1)
-            coordinate = east_image_coordinates[index]
-            height = height_map_east[coordinate]
+            height = calculate_height(sphere_point_xy, east_tree, east_image_coordinates, height_map_east)
 
         # add to list
         height_list.append(height)

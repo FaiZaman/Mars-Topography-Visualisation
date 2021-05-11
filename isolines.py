@@ -1,6 +1,6 @@
 # custom lookup table for mapper and scalar bar
-lut = vtk.vtkLookupTable()
-lut.Build()
+#lut = vtk.vtkLookupTable()
+#lut.Build()
 
 # set lookup table to mapper
 #mapper.SetScalarRange(-8, 14)
