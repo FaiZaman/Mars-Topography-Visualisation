@@ -1,4 +1,5 @@
 import cv2
+from numpy.lib.function_base import median
 import vtk
 import cv2
 import time
@@ -85,13 +86,10 @@ def preprocess(elevation_data_path, point_data, num_points):
     elevation_image = cv2.imread(elevation_data_path, cv2.IMREAD_COLOR)
     elevation_image = cv2.GaussianBlur(elevation_image, (5, 5), 0)
 
+    # split west and east hemisphere images and set centre
     west_image = elevation_image[151:2111, 13:1975].copy()
     east_image = elevation_image[151:2111, 2027:3989].copy()
-
-    # set image dimensions, centre and radius
-    height, width, channels = west_image.shape
     centre = (980, 981)
-    radius = 980
 
     # read colour map
     print("Reading colour map")
@@ -129,7 +127,7 @@ def assign_heights(image, centre, colour_map_dict):
 
     # assign colours in colourmap to image
     colours = np.array(list(colour_map_dict.keys()))    
-    image = colours[cKDTree(colours).query(image, k=1)[1]]
+    image = colours[cKDTree(colours).query(image, k=1, workers=-1)[1]]
 
     # initialise height dictionary and dimensions
     pixel_height_dict = {}
@@ -184,7 +182,7 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
         if z_coordinate >= 0:
 
             # query tree for closest image and fetch height
-            _, index = west_tree.query(sphere_point_xy, k=1)
+            _, index = west_tree.query(sphere_point_xy, k=1, workers=-1)
             coordinate = west_image_coordinates[index]
             height = height_map_west[coordinate]
 
@@ -192,7 +190,7 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
         else:
 
             # query tree for closest image and fetch height
-            _, index = east_tree.query(sphere_point_xy, k=1)
+            _, index = east_tree.query(sphere_point_xy, k=1, workers=-1)
             coordinate = east_image_coordinates[index]
             height = height_map_east[coordinate]
 
@@ -205,10 +203,12 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
 # converts xyh to xyz for sphere geometry
 def compute_height_map(elevation_data_path, texture_data_path):
 
+    start = time.time()
+
     # create sphere and set values
     mars = vtk.vtkSphereSource()
     mars.SetCenter(0.0, 0.0, 0.0)
-    mars.SetRadius(980)
+    mars.SetRadius(978)
     mars.SetThetaResolution(1962)
     mars.SetPhiResolution(1959)
     mars.Update()
@@ -271,6 +271,23 @@ def compute_height_map(elevation_data_path, texture_data_path):
     texture_actor.SetMapper(texture_mapper)
     texture_actor.SetTexture(texture)
 
+    # generate water sphere
+    water = vtk.vtkSphereSource()
+    water.SetCenter(0.0, 0.0, 0.0)
+    water.SetRadius(978)
+    water.SetThetaResolution(1962)
+    water.SetPhiResolution(1959)
+    water.Update()
+
+    # set water mapper
+    water_mapper = vtk.vtkPolyDataMapper()
+    water_mapper.SetInputConnection(water.GetOutputPort())
+
+    # create water actor and set to blue
+    water_actor = vtk.vtkActor()
+    water_actor.SetMapper(water_mapper)
+    water_actor.GetProperty().SetColor(colors.GetColor3d("DeepSkyBlue"))
+
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
     renderWindow = vtk.vtkRenderWindow()
@@ -282,8 +299,9 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # add actor and set background colour
     renderer.AddActor(height_actor)
     renderer.AddActor(texture_actor)
+    renderer.AddActor(water_actor)
     renderer.SetBackground(colors.GetColor3d("Black"))
-    
+
     # changes scale factor based on slider
     def update_scale_factor(obj, event):
 
@@ -313,6 +331,9 @@ def compute_height_map(elevation_data_path, texture_data_path):
     SliderWidget.SetRepresentation(SliderRepresentation)
     SliderWidget.SetEnabled(True)
     SliderWidget.AddObserver("InteractionEvent", update_scale_factor)
+
+    end = time.time()
+    print("Total time taken:", round(end - start, 2), "seconds")
 
     # render the planet
     renderWindow.Render()
