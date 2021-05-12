@@ -256,7 +256,11 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # map texture coordinates onto warped geometry
     map_to_sphere = vtk.vtkTextureMapToSphere()
     map_to_sphere.SetInputConnection(warp.GetOutputPort())
-    map_to_sphere.PreventSeamOn()
+    map_to_sphere.PreventSeamOff()
+
+    #transform_texture = vtk.vtkTransformTextureCoords()
+    #transform_texture.SetInputConnection(map_to_sphere.GetOutputPort())
+    #transform_texture.AddPosition(500, 0, 0)
 
     # create mapper and set the mapped texture as input
     texture_mapper = vtk.vtkPolyDataMapper()
@@ -294,10 +298,10 @@ def compute_height_map(elevation_data_path, texture_data_path):
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
 
-    # add actor and set background colour
+    # add actors and set background colour
     renderer.AddActor(height_actor)
     renderer.AddActor(texture_actor)
-    #renderer.AddActor(water_actor)
+    renderer.AddActor(water_actor)
     renderer.SetBackground(colours.GetColor3d("Black"))
 
     # changes scale factor based on slider

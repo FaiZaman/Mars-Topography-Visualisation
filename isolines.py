@@ -97,9 +97,26 @@ def compute_isolines(elevation_data_path, texture_data_path):
     isoline_actor = vtk.vtkActor()
     isoline_actor.SetMapper(isoline_mapper)
 
-    # add actor and set background colour
+    # create tube filter
+    TubeFilter = vtk.vtkTubeFilter()
+    TubeFilter.SetInputConnection(ContourFilter.GetOutputPort())
+    TubeFilter.SetRadius(0.02)
+    TubeFilter.SetNumberOfSides(50)
+    TubeFilter.Update()
+
+    # create tube mapper and set tube filter as input
+    tube_mapper = vtk.vtkPolyDataMapper()
+    tube_mapper.SetInputConnection(TubeFilter.GetOutputPort())
+
+    # create tube actor and set tube mapper
+    tube_actor = vtk.vtkActor()
+    tube_actor.SetMapper(tube_mapper)
+    tube_actor.GetProperty().SetOpacity(0.5)
+
+    # add actors and set background colour
     renderer.AddActor(texture_actor)
     renderer.AddActor(isoline_actor)
+    renderer.AddActor(tube_actor)
     renderer.SetBackground(colours.GetColor3d("Black"))
 
     # render the planet
