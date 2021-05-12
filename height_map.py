@@ -67,8 +67,7 @@ def read_colour_map(image):
                     break
 
                 # assign the height value for colour of current pixel
-                # add 8 so -8 becomes base of sphere
-                colour_map_dict[(r, g, b)] = pixel_height_value + 8
+                colour_map_dict[(r, g, b)] = pixel_height_value
                 pixel_height_value += pixel_height_change
 
                 if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
@@ -81,7 +80,7 @@ def read_colour_map(image):
 
 
 # preprocess by computing colourmap, heights, and their scalars
-def preprocess(elevation_data_path, point_data, num_points):
+def preprocess(elevation_data_path, point_data, num_points, vis_type):
 
     # read in image and separate west and east projections into two images
     elevation_image = cv2.imread(elevation_data_path, cv2.IMREAD_COLOR)
@@ -102,8 +101,12 @@ def preprocess(elevation_data_path, point_data, num_points):
 
     # retrieve list of corresponding heights and save
     print("Assigning scalar heights")
-    height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
-    save_obj(height_list, 'data/elevation_map')
+    height_list = get_scalar_heights(point_data, num_points, height_map_west, height_map_east, vis_type)
+    
+    if vis_type == 'warp':
+        save_obj(height_list, 'data/elevation_map')
+    else:
+        save_obj(height_list, 'data/isoline_heights')
 
     return height_list
 
@@ -160,7 +163,7 @@ def calculate_height(sphere_point_xy, tree, coordinates, height_map):
 
 
 # match closest image coordinate to sphere xy coordinate and fetch its height
-def get_scalar_heights(point_data, num_points, height_map_west, height_map_east):
+def get_scalar_heights(point_data, num_points, height_map_west, height_map_east, vis_type):
 
     # initialise height list
     height_list = []
@@ -187,6 +190,10 @@ def get_scalar_heights(point_data, num_points, height_map_west, height_map_east)
             height = calculate_height(sphere_point_xy, west_tree, west_image_coordinates, height_map_west)
         else:
             height = calculate_height(sphere_point_xy, east_tree, east_image_coordinates, height_map_east)
+
+        # add 8 so -8 becomes base of sphere for warp visualisation
+        if vis_type == 'warp':
+            height += 8
 
         # add to list
         height_list.append(height)
@@ -215,7 +222,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     num_points = point_data.GetNumberOfPoints()
 
     # preprocess or load data
-    #height_list = preprocess(elevation_data_path, point_data, num_points)
+    #height_list = preprocess(elevation_data_path, point_data, num_points, vis_type='warp')
     height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
@@ -293,7 +300,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     renderer = vtk.vtkRenderer()
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.SetWindowName("Mars Elevation Map")
-    renderWindow.SetSize(1900, 1000)
+    renderWindow.SetSize(1500, 700)
     renderWindow.AddRenderer(renderer)
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)

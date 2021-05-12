@@ -1,5 +1,5 @@
 import vtk
-from height_map import load_obj
+from height_map import load_obj, preprocess
 
 
 def compute_isolines(elevation_data_path, texture_data_path):
@@ -42,8 +42,8 @@ def compute_isolines(elevation_data_path, texture_data_path):
     num_points = point_data.GetNumberOfPoints()
 
     # preprocess or load data
-    #height_list = preprocess(elevation_data_path, point_data, num_points)
-    height_list = load_obj('data/elevation_map')
+    #height_list = preprocess(elevation_data_path, point_data, num_points, vis_type='isolines')
+    height_list = load_obj('data/isoline_heights')
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
@@ -63,18 +63,32 @@ def compute_isolines(elevation_data_path, texture_data_path):
     renderer = vtk.vtkRenderer()
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.SetWindowName("Mars Isolines Map")
-    renderWindow.SetSize(1900, 1000)
+    renderWindow.SetSize(1500, 700)
     renderWindow.AddRenderer(renderer)
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
 
-    lut = vtk.vtkLookupTable()
-    lut.Build()
+    # create a colour transfer function and set blue/red/yellow colours for isoline colourmap
+    ctf = vtk.vtkColorTransferFunction()
+    ctf.SetColorSpaceToDiverging()
+    ctf.AddRGBPoint(0, 0, 0, 1)     # blue
+    ctf.AddRGBPoint(0.5, 1, 0, 0)   # red
+    ctf.AddRGBPoint(1, 1, 1, 0)     # yellow
+
+    # create a lookup table mapping scalar values to colours
+    LookupTable = vtk.vtkLookupTable()
+    LookupTable.SetNumberOfTableValues(23)
+    LookupTable.Build()
+
+    # set the values between the blue/red/yellow colours
+    for i in range(0, 23):
+        rgb = list(ctf.GetColor(float(i) / 23)) + [1]
+        LookupTable.SetTableValue(i, rgb)
 
     # create the scalar_bar
     scalarBar = vtk.vtkScalarBarActor()
     scalarBar.SetOrientationToHorizontal()
-    scalarBar.SetLookupTable(lut)
+    scalarBar.SetLookupTable(LookupTable)
 
     # create scalar bar widget
     scalarBarWidget = vtk.vtkScalarBarWidget()
@@ -91,7 +105,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     isoline_mapper = vtk.vtkPolyDataMapper()
     isoline_mapper.SetInputConnection(ContourFilter.GetOutputPort())
     isoline_mapper.SetScalarRange(scalarRange)
-    isoline_mapper.SetLookupTable(lut)
+    isoline_mapper.SetLookupTable(LookupTable)
 
     # create isoline actor and set contour filter mapper
     isoline_actor = vtk.vtkActor()
