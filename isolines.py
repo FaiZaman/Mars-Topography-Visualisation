@@ -25,7 +25,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # map texture coordinates onto warped geometry
     map_to_sphere = vtk.vtkTextureMapToSphere()
     map_to_sphere.SetInputConnection(mars.GetOutputPort())
-    map_to_sphere.PreventSeamOn()
+    map_to_sphere.PreventSeamOff()
 
     # create mapper and set the mapped texture as input
     texture_mapper = vtk.vtkPolyDataMapper()
@@ -100,7 +100,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create tube filter
     TubeFilter = vtk.vtkTubeFilter()
     TubeFilter.SetInputConnection(ContourFilter.GetOutputPort())
-    TubeFilter.SetRadius(0.02)
+    TubeFilter.SetRadius(0.5)
     TubeFilter.SetNumberOfSides(50)
     TubeFilter.Update()
 
@@ -118,6 +118,36 @@ def compute_isolines(elevation_data_path, texture_data_path):
     renderer.AddActor(isoline_actor)
     renderer.AddActor(tube_actor)
     renderer.SetBackground(colours.GetColor3d("Black"))
+
+    # changes tube radius based on slider
+    def update_tube_radius(obj, event):
+
+        tube_radius = obj.GetRepresentation().GetValue()
+        TubeFilter.SetRadius(tube_radius)
+
+    # parameters for tube radius slider
+    SliderRepresentation = vtk.vtkSliderRepresentation2D()
+    SliderRepresentation.SetMinimumValue(0)
+    SliderRepresentation.SetMaximumValue(1)
+    SliderRepresentation.SetValue(0.5)
+
+    # set coordinates of slider
+    SliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
+    SliderRepresentation.GetPoint1Coordinate().SetValue(0.25, 0.1)
+    SliderRepresentation.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay()
+    SliderRepresentation.GetPoint2Coordinate().SetValue(0.75, 0.1)
+
+    # more slider parameters
+    SliderRepresentation.SetTitleText('Tube Radius')
+    SliderRepresentation.SetSliderLength(0.02)
+    SliderRepresentation.SetSliderWidth(0.03)
+
+    # create slider widget, assign parameters, and update tube radius based on slider changes
+    SliderWidget = vtk.vtkSliderWidget()
+    SliderWidget.SetInteractor(renderWindowInteractor)
+    SliderWidget.SetRepresentation(SliderRepresentation)
+    SliderWidget.SetEnabled(True)
+    SliderWidget.AddObserver("InteractionEvent", update_tube_radius)
 
     # render the planet
     renderWindow.Render()
