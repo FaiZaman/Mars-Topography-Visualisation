@@ -68,22 +68,30 @@ def compute_isolines(elevation_data_path, texture_data_path):
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
 
-    # create a colour transfer function and set blue/red/yellow colours for isoline colourmap
+    # create a colour transfer function and set blue/yellow colours for isoline colourmap
     ctf = vtk.vtkColorTransferFunction()
     ctf.SetColorSpaceToDiverging()
     ctf.AddRGBPoint(0, 0, 0, 1)     # blue
-    ctf.AddRGBPoint(0.5, 1, 0, 0)   # red
     ctf.AddRGBPoint(1, 1, 1, 0)     # yellow
 
     # create a lookup table mapping scalar values to colours
+    table_size = 23
     LookupTable = vtk.vtkLookupTable()
-    LookupTable.SetNumberOfTableValues(23)
+    LookupTable.SetNumberOfTableValues(table_size)
     LookupTable.Build()
 
-    # set the values between the blue/red/yellow colours
-    for i in range(0, 23):
-        rgb = list(ctf.GetColor(float(i) / 23)) + [1]
-        LookupTable.SetTableValue(i, rgb)
+    # set the diverging values between the blue/yellow colours
+    for i in range(0, table_size):
+
+        rgb = list(ctf.GetColor(float(i) / table_size)) + [1]
+
+        # set all values except for sea level
+        if i != 8:
+            LookupTable.SetTableValue(i, rgb)
+
+    # set sea level as red
+    rgb_sea = [1, 0, 0, 1]
+    LookupTable.SetTableValue(8, rgb_sea)
 
     # create the scalar_bar
     scalarBar = vtk.vtkScalarBarActor()
@@ -99,7 +107,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create contour filter and generate values of 1km increments for isolines
     ContourFilter = vtk.vtkContourFilter()
     ContourFilter.SetInputConnection(mars.GetOutputPort())
-    ContourFilter.GenerateValues(23, scalarRange)
+    ContourFilter.GenerateValues(table_size, scalarRange)
 
     # create isoline mapper, set the contour filter as input, and set scalar range
     isoline_mapper = vtk.vtkPolyDataMapper()
