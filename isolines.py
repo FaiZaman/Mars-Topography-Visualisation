@@ -123,7 +123,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create tube filter
     TubeFilter = vtk.vtkTubeFilter()
     TubeFilter.SetInputConnection(ContourFilter.GetOutputPort())
-    TubeFilter.SetRadius(0.5)
+    TubeFilter.SetRadius(2)
     TubeFilter.SetNumberOfSides(50)
     TubeFilter.Update()
 
@@ -134,7 +134,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create tube actor and set tube mapper
     tube_actor = vtk.vtkActor()
     tube_actor.SetMapper(tube_mapper)
-    tube_actor.GetProperty().SetOpacity(0.5)
+    #tube_actor.GetProperty().SetOpacity(0.5)
 
     # add actors and set background colour
     renderer.AddActor(texture_actor)
@@ -151,8 +151,8 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # parameters for tube radius slider
     SliderRepresentation = vtk.vtkSliderRepresentation2D()
     SliderRepresentation.SetMinimumValue(0)
-    SliderRepresentation.SetMaximumValue(1)
-    SliderRepresentation.SetValue(0.5)
+    SliderRepresentation.SetMaximumValue(5)
+    SliderRepresentation.SetValue(2)
 
     # set coordinates of slider
     SliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()

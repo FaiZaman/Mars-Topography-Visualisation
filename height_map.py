@@ -23,54 +23,38 @@ def read_colour_map(image):
 
     # initialise colour map and height dictionaries
     colour_map_dict = {}
+    hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    # read in image and narrow down to colour map area
-    colour_map_image = image[2200:2550]
+    # set value to 255
+    for y in range(0, hsvImage.shape[0]):
+        for x in range(0, hsvImage.shape[1]):
+            hsvImage[y][x][2] = 255
 
-    # set dimensions and middle value
-    _, width, _ = image.shape
-    middle = colour_map_image.shape[0] // 2
+    image = cv2.cvtColor(hsvImage, cv2.COLOR_HSV2BGR)
 
     # initialise values to read in colour map
-    recording = False
     pixel_height_change = 1/115
     pixel_height_value = -8 + pixel_height_change
 
     """
-    10 pixels in initial white bar
     ~115 pixels between bars
     1/115 change per pixel
     """
 
-    x = 0
+    x = 651
 
-    # loop through the middle row
-    while x < width:
+    while x < 3340:
 
-        pixel = colour_map_image[middle][x]  # set pixel
+        # get pixel and its rgb values
+        pixel = image[2350][x]
         r, g, b = pixel[0], pixel[1], pixel[2]
 
-        # check if white
-        if r == g == b == 255:
+        # assign the height value for colour of current pixel
+        colour_map_dict[(r, g, b)] = pixel_height_value
+        pixel_height_value += pixel_height_change
 
-            # once the colourmap has been reached start recording
-            recording = True
-
-        else:
-
-            # once recording has started
-            if recording:
-
-                # break if we go out of bounds
-                if r == g == b == 0:
-                    break
-
-                # assign the height value for colour of current pixel
-                colour_map_dict[(r, g, b)] = pixel_height_value
-                pixel_height_value += pixel_height_change
-
-                if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
-                    x += 7
+        if abs(pixel_height_value - int(pixel_height_value)) < pixel_height_change:
+            x += 7
 
         x += 1
 
@@ -140,10 +124,10 @@ def assign_heights(image, centre, colour_map_dict):
 
 
 # get height for current pixel by calculating median of heights of neighbouring pixels for smoother sphere
-def calculate_height(sphere_point_xy, tree, coordinates, height_map):
+def calculate_height(sphere_point_xz, tree, coordinates, height_map):
 
     # query tree for 500 closest image coordinates and initialise neighbour pixel heights
-    _, index = tree.query(sphere_point_xy, k=500, workers=-1)
+    _, index = tree.query(sphere_point_xz, k=500, workers=-1)
     neighbour_heights = []
 
     # retrieve heights for neighbouring pixels and add to list
@@ -157,7 +141,7 @@ def calculate_height(sphere_point_xy, tree, coordinates, height_map):
     return height
 
 
-# match closest image coordinate to sphere xy coordinate and fetch its height
+# match closest image coordinate to sphere xz coordinate and fetch its height
 def get_scalar_heights(point_data, num_points, height_map_west, height_map_east):
 
     # initialise height list
@@ -213,8 +197,8 @@ def compute_height_map(elevation_data_path, texture_data_path):
     num_points = point_data.GetNumberOfPoints()
 
     # preprocess or load data
-    #height_list = preprocess(elevation_data_path, point_data, num_points)
-    height_list = load_obj('data/elevation_map')
+    height_list = preprocess(elevation_data_path, point_data, num_points)
+    #height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
@@ -283,8 +267,14 @@ def compute_height_map(elevation_data_path, texture_data_path):
     water_actor.SetMapper(water_mapper)
     water_actor.GetProperty().SetColor(colours.GetColor3d("DeepSkyBlue"))
 
+    # set camera perspective
+    camera = vtk.vtkCamera()
+    camera.SetPosition(1000, 1000, 1000)
+    camera.SetFocalPoint(0, 978, 0)
+
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
+    renderer.SetActiveCamera(camera)
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.SetWindowName("Mars Elevation Map")
     renderWindow.SetSize(1500, 700)
@@ -295,7 +285,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # add actors and set background colour
     renderer.AddActor(height_actor)
     renderer.AddActor(texture_actor)
-    renderer.AddActor(water_actor)
+    #renderer.AddActor(water_actor)
     renderer.SetBackground(colours.GetColor3d("Black"))
 
     # changes scale factor based on slider
