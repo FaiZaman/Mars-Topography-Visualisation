@@ -1,3 +1,4 @@
+import cv2
 import vtk
 from height_map import load_obj, preprocess
 
@@ -42,8 +43,8 @@ def compute_isolines(elevation_data_path, texture_data_path):
     num_points = point_data.GetNumberOfPoints()
 
     # preprocess or load data
-    #height_list = preprocess(elevation_data_path, point_data, num_points, vis_type='isolines')
-    height_list = load_obj('data/isoline_heights')
+    #height_list = preprocess(elevation_data_path, point_data, num_points)
+    height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
@@ -180,4 +181,11 @@ if __name__ == '__main__':
 
     elevation_data_path = 'data/elevationData.tif'
     texture_data_path = 'data/marsTexture.jpg'
-    compute_isolines(elevation_data_path, texture_data_path)
+
+    # flip the texture and save it to align properly with warp
+    texture = cv2.imread(texture_data_path, cv2.IMREAD_COLOR)
+    flipped_texture = cv2.flip(texture, 1)
+    flipped_texture_path = 'data/flipped_texture.jpg'
+    cv2.imwrite(flipped_texture_path, flipped_texture)
+
+    compute_isolines(elevation_data_path, flipped_texture_path)
