@@ -1,6 +1,7 @@
+import sys
 import cv2
 import vtk
-from height_map import load_obj, preprocess
+from preprocessing import load_obj
 
 
 def compute_isolines(elevation_data_path, texture_data_path):
@@ -39,11 +40,9 @@ def compute_isolines(elevation_data_path, texture_data_path):
     texture_actor.SetTexture(texture)
 
     # initalise point data and their size
-    point_data = mars.GetOutput().GetPoints()
-    num_points = point_data.GetNumberOfPoints()
+    num_points = mars.GetOutput().GetPoints().GetNumberOfPoints()
 
-    # preprocess or load data
-    #height_list = preprocess(elevation_data_path, point_data, num_points)
+    # load data
     height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
@@ -70,18 +69,21 @@ def compute_isolines(elevation_data_path, texture_data_path):
     renderWindowInteractor = vtk.vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
 
-    # create a colour transfer function and set blue/yellow colours for isoline colourmap
+    # create a colour transfer function and set blue/red/yellow colours for isoline colourmap
     ctf = vtk.vtkColorTransferFunction()
     ctf.SetColorSpaceToDiverging()
     ctf.AddRGBPoint(-8, 0, 0, 1)     # blue
-    ctf.AddRGBPoint(-0.5, 1, 1, 1)   # white
+    ctf.AddRGBPoint(-1, 1, 1, 1)   # white
     ctf.AddRGBPoint(0, 1, 0, 0)      # red
-    ctf.AddRGBPoint(0.5, 1, 1, 1)    # white
+    ctf.AddRGBPoint(0.1, 1, 1, 1)    # white
     ctf.AddRGBPoint(14, 1, 1, 0)     # yellow
 
     # create the scalar_bar
     scalarBar = vtk.vtkScalarBarActor()
     scalarBar.SetOrientationToHorizontal()
+    scalarBar.SetTitle("Altitude (km)")
+    scalarBar.SetNumberOfLabels(num_isolines)
+    scalarBar.SetMaximumNumberOfColors(num_isolines)
     scalarBar.SetLookupTable(ctf)
 
     # create scalar bar widget
@@ -136,8 +138,8 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # parameters for tube radius slider
     SliderRepresentation = vtk.vtkSliderRepresentation2D()
     SliderRepresentation.SetMinimumValue(0)
-    SliderRepresentation.SetMaximumValue(2)
-    SliderRepresentation.SetValue(5)
+    SliderRepresentation.SetMaximumValue(5)
+    SliderRepresentation.SetValue(3)
 
     # set coordinates of slider
     SliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
@@ -164,11 +166,12 @@ def compute_isolines(elevation_data_path, texture_data_path):
 
 if __name__ == '__main__':
 
-    elevation_data_path = 'data/elevationData.tif'
-    texture_data_path = 'data/marsTexture.jpg'
+    # get arguments
+    file_paths = sys.argv
+    elevation_data_path, texture_path = file_paths[1], file_paths[2]
 
     # flip the texture and save it to align properly with warp
-    texture = cv2.imread(texture_data_path, cv2.IMREAD_COLOR)
+    texture = cv2.imread(texture_path, cv2.IMREAD_COLOR)
     flipped_texture = cv2.flip(texture, 1)
     flipped_texture_path = 'data/flipped_texture.jpg'
     cv2.imwrite(flipped_texture_path, flipped_texture)
