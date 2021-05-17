@@ -59,6 +59,7 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # assign to sphere and initialise scalar range of heights
     mars.GetOutput().GetPointData().SetScalars(height_scalars)
     scalarRange = [-8, 14]
+    num_isolines = 23
 
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
@@ -72,32 +73,16 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create a colour transfer function and set blue/yellow colours for isoline colourmap
     ctf = vtk.vtkColorTransferFunction()
     ctf.SetColorSpaceToDiverging()
-    ctf.AddRGBPoint(0, 0, 0, 1)     # blue
-    ctf.AddRGBPoint(1, 1, 1, 0)     # yellow
-
-    # create a lookup table mapping scalar values to colours
-    table_size = 23
-    LookupTable = vtk.vtkLookupTable()
-    LookupTable.SetNumberOfTableValues(table_size)
-    LookupTable.Build()
-
-    # set the diverging values between the blue/yellow colours
-    for i in range(0, table_size):
-
-        rgb = list(ctf.GetColor(float(i) / table_size)) + [1]
-
-        # set all values except for sea level
-        if i != 8:
-            LookupTable.SetTableValue(i, rgb)
-
-    # set sea level as red
-    rgb_sea = [1, 0, 0, 1]
-    LookupTable.SetTableValue(8, rgb_sea)
+    ctf.AddRGBPoint(-8, 0, 0, 1)     # blue
+    ctf.AddRGBPoint(-0.5, 1, 1, 1)   # white
+    ctf.AddRGBPoint(0, 1, 0, 0)      # red
+    ctf.AddRGBPoint(0.5, 1, 1, 1)    # white
+    ctf.AddRGBPoint(14, 1, 1, 0)     # yellow
 
     # create the scalar_bar
     scalarBar = vtk.vtkScalarBarActor()
     scalarBar.SetOrientationToHorizontal()
-    scalarBar.SetLookupTable(LookupTable)
+    scalarBar.SetLookupTable(ctf)
 
     # create scalar bar widget
     scalarBarWidget = vtk.vtkScalarBarWidget()
@@ -108,13 +93,13 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create contour filter and generate values of 1km increments for isolines
     ContourFilter = vtk.vtkContourFilter()
     ContourFilter.SetInputConnection(mars.GetOutputPort())
-    ContourFilter.GenerateValues(table_size, scalarRange)
+    ContourFilter.GenerateValues(num_isolines, scalarRange)
 
     # create isoline mapper, set the contour filter as input, and set scalar range
     isoline_mapper = vtk.vtkPolyDataMapper()
     isoline_mapper.SetInputConnection(ContourFilter.GetOutputPort())
     isoline_mapper.SetScalarRange(scalarRange)
-    isoline_mapper.SetLookupTable(LookupTable)
+    isoline_mapper.SetLookupTable(ctf)
 
     # create isoline actor and set contour filter mapper
     isoline_actor = vtk.vtkActor()
@@ -130,11 +115,11 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # create tube mapper and set tube filter as input
     tube_mapper = vtk.vtkPolyDataMapper()
     tube_mapper.SetInputConnection(TubeFilter.GetOutputPort())
+    tube_mapper.SetLookupTable(ctf)
 
     # create tube actor and set tube mapper
     tube_actor = vtk.vtkActor()
     tube_actor.SetMapper(tube_mapper)
-    #tube_actor.GetProperty().SetOpacity(0.5)
 
     # add actors and set background colour
     renderer.AddActor(texture_actor)
@@ -151,8 +136,8 @@ def compute_isolines(elevation_data_path, texture_data_path):
     # parameters for tube radius slider
     SliderRepresentation = vtk.vtkSliderRepresentation2D()
     SliderRepresentation.SetMinimumValue(0)
-    SliderRepresentation.SetMaximumValue(5)
-    SliderRepresentation.SetValue(2)
+    SliderRepresentation.SetMaximumValue(2)
+    SliderRepresentation.SetValue(5)
 
     # set coordinates of slider
     SliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()

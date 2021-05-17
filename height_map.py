@@ -197,8 +197,8 @@ def compute_height_map(elevation_data_path, texture_data_path):
     num_points = point_data.GetNumberOfPoints()
 
     # preprocess or load data
-    height_list = preprocess(elevation_data_path, point_data, num_points)
-    #height_list = load_obj('data/elevation_map')
+    #height_list = preprocess(elevation_data_path, point_data, num_points)
+    height_list = load_obj('data/elevation_map')
 
     # create data structure for heights to set scalars
     height_scalars = vtk.vtkDoubleArray()
@@ -216,7 +216,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # creating a warp based on height values and setting the colours
     warp = vtk.vtkWarpScalar()
     warp.SetInputConnection(mars.GetOutputPort())
-    warp.SetScaleFactor(2.5)
+    warp.SetScaleFactor(5)
 
     # initialise a mapper to map sphere data
     height_mapper = vtk.vtkPolyDataMapper()
@@ -253,7 +253,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # generate water sphere
     water = vtk.vtkSphereSource()
     water.SetCenter(0.0, 0.0, 0.0)
-    water.SetRadius(980)
+    water.SetRadius(950)
     water.SetThetaResolution(sphere_width)
     water.SetPhiResolution(sphere_height)
     water.Update()
@@ -274,7 +274,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
 
     # initialise a renderer and set parameters
     renderer = vtk.vtkRenderer()
-    renderer.SetActiveCamera(camera)
+    #renderer.SetActiveCamera(camera)
     renderWindow = vtk.vtkRenderWindow()
     renderWindow.SetWindowName("Mars Elevation Map")
     renderWindow.SetSize(1500, 700)
@@ -285,7 +285,7 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # add actors and set background colour
     renderer.AddActor(height_actor)
     renderer.AddActor(texture_actor)
-    #renderer.AddActor(water_actor)
+    renderer.AddActor(water_actor)
     renderer.SetBackground(colours.GetColor3d("Black"))
 
     # changes scale factor based on slider
@@ -297,8 +297,8 @@ def compute_height_map(elevation_data_path, texture_data_path):
     # parameters for scale factor slider
     SliderRepresentation = vtk.vtkSliderRepresentation2D()
     SliderRepresentation.SetMinimumValue(0)
-    SliderRepresentation.SetMaximumValue(5)
-    SliderRepresentation.SetValue(2.5)
+    SliderRepresentation.SetMaximumValue(10)
+    SliderRepresentation.SetValue(5)
 
     # set coordinates of slider
     SliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
@@ -317,6 +317,36 @@ def compute_height_map(elevation_data_path, texture_data_path):
     SliderWidget.SetRepresentation(SliderRepresentation)
     SliderWidget.SetEnabled(True)
     SliderWidget.AddObserver("InteractionEvent", update_scale_factor)
+
+    # changes scale factor based on slider
+    def update_water_radius(obj, event):
+
+        water_radius = obj.GetRepresentation().GetValue()
+        water.SetRadius(water_radius)
+    
+    # parameters for water radius slider
+    WaterSliderRepresentation = vtk.vtkSliderRepresentation2D()
+    WaterSliderRepresentation.SetMinimumValue(950)
+    WaterSliderRepresentation.SetMaximumValue(1100)
+    WaterSliderRepresentation.SetValue(950)
+
+    # set coordinates of slider
+    WaterSliderRepresentation.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay()
+    WaterSliderRepresentation.GetPoint1Coordinate().SetValue(0.25, 0.9)
+    WaterSliderRepresentation.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay()
+    WaterSliderRepresentation.GetPoint2Coordinate().SetValue(0.75, 0.9)
+
+    # more slider parameters
+    WaterSliderRepresentation.SetTitleText('Water Radius')
+    WaterSliderRepresentation.SetSliderLength(0.02)
+    WaterSliderRepresentation.SetSliderWidth(0.03)
+
+    # create slider widget, assign parameters, and update water radius based on slider changes
+    WaterSliderWidget = vtk.vtkSliderWidget()
+    WaterSliderWidget.SetInteractor(renderWindowInteractor)
+    WaterSliderWidget.SetRepresentation(WaterSliderRepresentation)
+    WaterSliderWidget.SetEnabled(True)
+    WaterSliderWidget.AddObserver("InteractionEvent", update_water_radius)
 
     end = time.time()
     print("Total time taken:", round(end - start, 2), "seconds")
